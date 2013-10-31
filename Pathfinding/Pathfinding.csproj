@@ -41,6 +41,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Agent.cs" />
     <Compile Include="AStar.cs" />
     <Compile Include="Node.cs" />
     <Compile Include="Program.cs" />

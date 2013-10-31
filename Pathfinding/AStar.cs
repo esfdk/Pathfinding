@@ -3,16 +3,39 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Security;
 
+    /// <summary>
+    /// The A* algorithm.
+    /// Implementation loosely based on A* pseudo code from http://web.mit.edu/eranki/www/tutorials/search/
+    /// </summary>
     public class AStar
     {
+        /// <summary>
+        /// The open list.
+        /// </summary>
         private static List<Node> open;
 
+        /// <summary>
+        /// The closed list.
+        /// </summary>
         private static List<Node> closed;
 
+        /// <summary>
+        /// A* algorithm - takes a starting + target node and calculates the fastest route between the two nodes.
+        /// </summary>
+        /// <param name="start">The starting node.</param>
+        /// <param name="target">The target node.</param>
+        /// <returns>The <see cref="List"/> containing the path from starting node to target node.</returns>
         public static List<Node> Algorithm(Node start, Node target)
         {
+            for (var x = 0; x < Program.MapWidth; x++)
+            {
+                for (var y = 0; y < Program.MapHeight; y++)
+                {
+                    Program.Map[x, y].Parent = null;
+                }
+            }
+
             // (1) initialize the open list
             open = new List<Node>();
 
@@ -32,7 +55,7 @@
                 open.RemoveAt(0);
 
                 // (7) generate q's 8 successors
-                var successors = q.GetSuccessors();
+                var successors = q.GetSuccessors().Where(succesor => succesor.Cost > -1);
                 
                 // (8) for each succesor
                 foreach (var successor in successors)
@@ -40,70 +63,81 @@
                     // (9) if successor is the goal, stop the search
                     if (successor.Equals(target))
                     {
-                        successor.parent = q;
-                        return reconstructPath(successor);
+                        successor.Parent = q;
+                        return ReconstructPath(successor);
                     }
 
                     // (10) successor.g = q.g + distance between successor and q
-                    var g = q.g + successor.cost;
+                    var g = q.G + successor.Cost;
 
                     // (11) successor.h = distance from goal to successor
-                    var h = DistanceBetweenNodes(successor, target); 
+                    var h = Node.DistanceBetweenNodes(successor, target); 
 
                     // (12) successor.f = successor.g + successor.h
                     var f = g + h;
 
-                    // (13 & 14) if new f is lower than to successor.f
-                    if (f <= successor.f)
+                    // (13 & 14) if successor is not in open or closed list
+                    if (closed.Contains(successor) && f >= successor.F)
                     {
-                        successor.f = f;
-                        successor.g = g;
-                        successor.parent = q;
+                        continue;
                     }
 
-                    // (13 & 14) if successor is not in open or closed list
-                    if (!(open.Contains(successor) || closed.Contains(successor)))
+                    if (!open.Contains(successor))
                     {
-                        // (15) otherwise, add the node to the open list
-                        successor.parent = q;
+                        successor.F = f;
+                        successor.G = g;
+                        successor.Parent = q;
                         AddToOpenList(successor);
+                        continue;
+                    }
+                    
+                    // (15) otherwise, add the node to the open list
+                    if (open.Contains(successor))
+                    {
+                        if (f < successor.F)
+                        {
+                            successor.F = f;
+                            successor.G = g;
+                            successor.Parent = q;
+                        }
                     }
                 }
 
                 // (17) push q on the closed list
                 AddToCLosedList(q);
             }
+
+            return null;
         }
 
-        private static List<Node> reconstructPath(Node end)
+        /// <summary>
+        /// Reconstructs a path based on an end node and its parents.
+        /// </summary>
+        /// <param name="endNode">The end node of the path to reconstruct.</param>
+        /// <returns>The <see cref="List"/> containing the path.</returns>
+        private static List<Node> ReconstructPath(Node endNode)
         {
-            var list = new List<Node>();
-            list = reconstructPath(list, end);
-            list.Reverse();
-            return list;
-        }
-
-        private static List<Node> reconstructPath(List<Node> nodes, Node current)
-        {
-            if (current == null)
+            var nodes = new List<Node>();
+            
+            while (endNode != null)
             {
-                return nodes;
+                nodes.Add(endNode);
+                endNode = endNode.Parent;
             }
 
-            nodes.Add(current);
-            return reconstructPath(nodes, current.parent);
+            nodes.Reverse();
+            return nodes;
         }
 
-        private static float DistanceBetweenNodes(Node a, Node b)
-        {
-            return (float) Math.Sqrt(Math.Pow((b.x - a.x), 2) + Math.Pow((b.y - a.y), 2));
-        }
-
+        /// <summary>
+        /// Adds a node to the closed list (sorted lowest to highest based on the f-value of the node).
+        /// </summary>
+        /// <param name="n">The node to add.</param>
         private static void AddToCLosedList(Node n)
         {
             for (var i = 0; i < closed.Count; i++)
             {
-                if (n.f < closed[i].f)
+                if (n.F < closed[i].F)
                 {
                     closed.Insert(i, n);
                     return;
@@ -113,11 +147,15 @@
             closed.Add(n);
         }
 
+        /// <summary>
+        /// Adds a node to the open list (sorted lowest to highest based on the f-value of the node).
+        /// </summary>
+        /// <param name="n">The node to add.</param>
         private static void AddToOpenList(Node n)
         {
             for (var i = 0; i < open.Count; i++)
             {
-                if (n.f < open[i].f)
+                if (n.F < open[i].F)
                 {
                     open.Insert(i, n);
                     return;
